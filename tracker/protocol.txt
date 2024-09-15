@@ -1,0 +1,66 @@
+*Author : Nicolas Deniaud
+*Editor : Nico Kist
+
+
+This file tries to describe tracker's protocol.
+
+The tracker is the main server that allows users to find a server where to play.
+
+The tracker is listening on two ports: one for client connections, and one for servers connections. Servers need a passwd to connect to tracker,
+Clients do not.
+Server <-> Tracker communication:
+-login : server establishes the connection and sends the passwd, if it is wrong the tracker will close the connection.
+-ping  : tracker use a ping/pong system to know which server still alive.
+-infos : whenever something changes on a server after it logged on, that server will send its information(Settings: speed,
+size, erase; Description; Version; IP; Port; NbPlayers.)
+
+Server 
+
+Client <-> Tracker communication:
+-infos : whenever something change on a server and after login, a server send its informations. Informations are: Settings: speed, size, erase; Description; Version; IP; Port; NbPlayers.
+
+
+                            ----------
+			   |          |_______________________ client 1
+			   | Tracker  |                        ________
+			   |          |
+                         /  ----------  \
+                       /         |        \
+                     /           |          \
+         ----------         ----------         ----------
+	|          |	   |          |	      |          |
+	| Server 1 |	   | Server 2 |	      | Server 3 |
+	|          |	   |          |       |          |
+         ----------         ----------         ----------
+             |
+         client 2
+	 ________
+
+		Example of tracker, server and client architecture.
+		__________________________________________________
+
+When a client goes to a server, it disconnects from tracker.
+
+
+Session example:
+-tracker start;
+-server A start;
+-server A connect to tracker and logs in;
+-client 1 starts and connects to the tracker;
+-tracker sends server list to client 1(right now only server A);
+-client 1 selects server A;
+-client 1 disconnect from the tracker;
+-client 1 connects to server A;
+-client 1 plays;
+-client 1 disconnects from server A and connects to the tracker;
+-client 1 disconnects from the tracker and quits.
+
+Gui:
+Typically, we use a list. It can be a server list, scrollable, one line per server which contain these informations:Settings: speed, size, erase; Description; Version; IP; Port; NbPlayers. Arrows permit to select the server we want. Server list is ordered by ping. 
+
+ping ideas/problems:
+The client needs to ping all the servers (speed matters from his location, not the trackers), but the tracker does need to know if all the
+servers are still online. the offline ones need to be discarded
+
+Security problems:
+The tracker can open MAX_SLOTS connections, and those connections can be server<->tracker or client<->tracker. Let's see what a Denial Of Service attacks ( DOS ) can do on the master server ( tracker ). First, the DOS attack consist in doing this: while( master server is still alive ) { create  a random address; send a fake login message to master }. If a guy do that kind off attack and active all slots, server wouldn't be accessible by clients. But before it activates all port, if a client connect to the master server, it gets a big amount of fake server. it would generate in a few second a lot of traffic and could use all ressources of the server. Actually the master server can not know if the connection come from a fake server that spoof its address. One way to avoid that is using a protocol like identd one. I mean server establish the connection to the tracker, then server send a login packet, tracker get that packet and generate a number that send to the server IP, and wait a few second to get the info of the server+that same number. If the server is a fake one spoofing, tracker won't never get back infos or get it with a wrong number.
